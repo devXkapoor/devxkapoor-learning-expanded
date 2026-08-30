@@ -3149,44 +3149,50 @@ tabs.querySelectorAll(".tab-btn").forEach((tabButton) => {
       return;
     }
 
-    // Each JSON section is one top-level expanded node.
-    // Internal headings inside the node become <h4> so that the existing
-    // Landscape renderer does not mistake them for additional nodes.
-    prose.innerHTML = data.sections.map((section) => {
-      const contentRoot = document.createElement("div");
-      contentRoot.innerHTML = section.content || "";
+    // Render each JSON section as one outer node, matching the existing
+    // Elaboration structure. The content inside each node is then rendered
+    // with the shared "sub" collapsible renderer.
+    prose.innerHTML = "";
 
-      contentRoot.querySelectorAll("h3").forEach((heading) => {
-        const h4 = document.createElement("h4");
-        h4.innerHTML = heading.innerHTML;
-        heading.replaceWith(h4);
-      });
+    data.sections.forEach((section) => {
+      const block = document.createElement("details");
+      block.className = "el-block";
+      block.id = section.anchor || "";
 
-      return (
-        `<h3>${section.title || "Untitled section"}</h3>` +
-        contentRoot.innerHTML
-      );
-    }).join("\n\n");
+      block.innerHTML =
+        `<summary class="node-summary">` +
+          `<span class="node-chevron">${ICON.chevron}</span>` +
+          `<span class="node-title">${section.title || "Untitled section"}</span>` +
+        `</summary>` +
+        `<div class="node-body"><div class="prose">${section.content || ""}</div></div>`;
 
-    const nodeCount = data.sections.filter((section) =>
-      /^Node\s+\d+/i.test(String(section.title || ""))
-    ).length;
-
-    const count = makeSectionsCollapsible(prose, {
-      startOpen: false
+      prose.appendChild(block);
     });
 
+    // Exactly like Elaboration: each outer node contains a prose area,
+    // whose internal <h3> headings become independently collapsible
+    // sub-sections.
+    prose.querySelectorAll(".el-block .prose").forEach((pr) => {
+      makeSectionsCollapsible(pr, {
+        startOpen: false,
+        level: "sub"
+      });
 
-    addCopyButtons(prose);
+      addCopyButtons(pr);
+    });
+
     decorateBlocks(prose);
 
-    if (count) {
-      addExpandControls(
-        panel,
-        prose,
-        `${nodeCount || count} nodes`
-      );
-    }
+    addExpandControls(
+      panel,
+      prose,
+      `${data.sections.length} node${data.sections.length === 1 ? "" : "s"}`
+    );
+
+    revealHash();
+
+
+
   }
 
 
