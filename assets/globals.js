@@ -4,7 +4,7 @@
 const DK = (() => {
   const basePath = (() => {
     const path = window.location.pathname;
-    const marker = "/devxkapoor-learning/";
+    const marker = "/devxkapoor-learning-expanded/";
     if (path.includes(marker)) {
       return path.slice(0, path.indexOf(marker) + marker.length);
     }
