@@ -3149,12 +3149,22 @@ tabs.querySelectorAll(".tab-btn").forEach((tabButton) => {
       return;
     }
 
-    // Use the same h3-based structure expected by the existing
-    // makeSectionsCollapsible() renderer.
+    // Each JSON section is one top-level expanded node.
+    // Internal headings inside the node become <h4> so that the existing
+    // Landscape renderer does not mistake them for additional nodes.
     prose.innerHTML = data.sections.map((section) => {
+      const contentRoot = document.createElement("div");
+      contentRoot.innerHTML = section.content || "";
+
+      contentRoot.querySelectorAll("h3").forEach((heading) => {
+        const h4 = document.createElement("h4");
+        h4.innerHTML = heading.innerHTML;
+        heading.replaceWith(h4);
+      });
+
       return (
         `<h3>${section.title || "Untitled section"}</h3>` +
-        `${section.content || ""}`
+        contentRoot.innerHTML
       );
     }).join("\n\n");
 
@@ -3165,6 +3175,7 @@ tabs.querySelectorAll(".tab-btn").forEach((tabButton) => {
     const count = makeSectionsCollapsible(prose, {
       startOpen: false
     });
+
 
     addCopyButtons(prose);
     decorateBlocks(prose);
