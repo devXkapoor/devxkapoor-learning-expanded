@@ -3055,7 +3055,131 @@ const DK = (() => {
     };
   })();
 
-  return { basePath, fetchJSON, loadTracker, loadAllRecall, loadAllPrep, loadAllElaboration, statusOf, runBoot, initTheme, wireThemeToggle, setTheme, getMark, setMark, renderDeck, MARK_TYPES, getNotes, setNotes, noteCount, buildMarkdown, buildBackup, importBackup, plainText, highlight, addCopyButtons, makeSectionsCollapsible, addExpandControls, addBlockFooter, addLocalControls, decorateBlocks, revealHash, ICON, reader };
+
+  // ---------- Landscape Expanded -------------------------------------
+  // Every topic pack gets an optional sixth tab. The data lives at
+  // topics/<topic>/landscape-expanded.json and uses the same section shape
+  // and prose enhancements as the existing Landscape/Elaboration content.
+  async function mountLandscapeExpanded() {
+    const topicMatch = window.location.pathname.match(
+      /\/topics\/([^/]+)\/pack\.html(?:\/)?$/
+    );
+
+    if (!topicMatch) return;
+
+    const tabs = document.querySelector(".tabs");
+    const landscapePanel = document.getElementById("tab-landscape");
+    const recallTab = document.querySelector(
+      '.tab-btn[data-tab="recall"]'
+    );
+
+    if (!tabs || !landscapePanel || !recallTab) return;
+
+    // Never inject the tab more than once.
+    if (tabs.querySelector(
+      '.tab-btn[data-tab="landscape-expanded"]'
+    )) {
+      return;
+    }
+
+    const topicSlug = decodeURIComponent(topicMatch[1]);
+
+    // ----- tab button --------------------------------------------------
+    const button = document.createElement("button");
+    button.className = "tab-btn";
+    button.type = "button";
+    button.dataset.tab = "landscape-expanded";
+    button.textContent = "Landscape Expanded";
+
+    // Insert immediately after the canonical Landscape tab.
+    tabs.insertBefore(button, recallTab);
+
+    // ----- tab panel ---------------------------------------------------
+    const panel = document.createElement("div");
+    panel.id = "tab-landscape-expanded";
+    panel.style.display = "none";
+
+    const prose = document.createElement("div");
+    prose.className = "prose";
+    prose.id = "landscapeExpandedProse";
+
+    panel.appendChild(prose);
+    landscapePanel.insertAdjacentElement("afterend", panel);
+
+    // ----- tab switching -----------------------------------------------
+    button.addEventListener("click", () => {
+      tabs.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.remove("active");
+      });
+
+      button.classList.add("active");
+
+      document.querySelectorAll(
+        "#tab-landscape, " +
+        "#tab-landscape-expanded, " +
+        "#tab-recall, " +
+        "#tab-prep, " +
+        "#tab-elaboration, " +
+        "#tab-discuss"
+      ).forEach((p) => {
+        p.style.display = "none";
+      });
+
+      panel.style.display = "block";
+    });
+
+tabs.querySelectorAll(".tab-btn").forEach((tabButton) => {
+  if (tabButton === button) return;
+
+  tabButton.addEventListener("click", () => {
+    panel.style.display = "none";
+  });
+});
+
+    // ----- load topic-specific expanded content -----------------------
+    const data = await fetchJSON(
+      `topics/${topicSlug}/landscape-expanded.json`
+    );
+
+    if (!data || !Array.isArray(data.sections) || !data.sections.length) {
+      prose.innerHTML =
+        "<p class='empty-note'>" +
+        "The expanded landscape hasn't been started yet." +
+        "</p>";
+      return;
+    }
+
+    // Use the same h3-based structure expected by the existing
+    // makeSectionsCollapsible() renderer.
+    prose.innerHTML = data.sections.map((section) => {
+      return (
+        `<h3>${section.title || "Untitled section"}</h3>` +
+        `${section.content || ""}`
+      );
+    }).join("\n\n");
+
+    const nodeCount = data.sections.filter((section) =>
+      /^Node\s+\d+/i.test(String(section.title || ""))
+    ).length;
+
+    const count = makeSectionsCollapsible(prose, {
+      startOpen: false
+    });
+
+    addCopyButtons(prose);
+    decorateBlocks(prose);
+
+    if (count) {
+      addExpandControls(
+        panel,
+        prose,
+        `${nodeCount || count} nodes`
+      );
+    }
+  }
+
+
+  return { basePath, fetchJSON, loadTracker, loadAllRecall, loadAllPrep, loadAllElaboration, statusOf, runBoot, initTheme, wireThemeToggle, setTheme, getMark, setMark, renderDeck, MARK_TYPES, getNotes, setNotes, noteCount, buildMarkdown, buildBackup, importBackup, plainText, highlight, addCopyButtons, makeSectionsCollapsible, addExpandControls, addBlockFooter, addLocalControls, decorateBlocks, revealHash, ICON, mountLandscapeExpanded, reader };
 })();
 
 // Apply theme immediately on script load (before body renders) to avoid a flash.
@@ -3075,7 +3199,11 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
 // The read-aloud player mounts itself: every page in the repo already loads this
 // file, so there is nothing to add to the pages themselves.
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => DK.reader.mount());
+  document.addEventListener("DOMContentLoaded", () => {
+    DK.mountLandscapeExpanded();
+    DK.reader.mount();
+  });
 } else {
+  DK.mountLandscapeExpanded();
   DK.reader.mount();
 }
